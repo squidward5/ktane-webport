@@ -209,10 +209,13 @@
                                 if (/^(https?|ftp|file):\/\//.test(assetUrl) || assetUrl.indexOf("blob:") === 0) {
                                     return assetUrl;
                                 }
+                                if (/\.wasm(?:$|\?)/i.test(assetUrl)) {
+                                    return config.wasmCodeUrl;
+                                }
                                 return new URL("Build/" + assetUrl, window.location.href).href;
                             },
                             locateFile: function (fileName) {
-                                if (fileName === "build.wasm") {
+                                if (/\.wasm(?:$|\?)/i.test(fileName)) {
                                     return config.wasmCodeUrl;
                                 }
                                 return new URL("Build/" + fileName, window.location.href).href;
