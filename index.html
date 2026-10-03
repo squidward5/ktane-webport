@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Keep Talking and Nobody Explodes</title>
 
 <script src="Build/UnityLoader.js"></script>
 
 <style>
 html, body {
+    box-sizing: border-box;
     margin: 0;
     border: none;
     width: 100vw;
@@ -17,10 +19,6 @@ html, body {
     background: #181818;
     color: #eee;
     font-family: Arial, Helvetica, sans-serif;
-}
-
-body {
-    box-sizing: border-box;
 }
 
 #menu {
@@ -46,6 +44,10 @@ h1 {
 p {
     color: #bbb;
     line-height: 1.5;
+}
+
+#loadError {
+    color: #ff8080;
 }
 
 .buttons {
@@ -97,14 +99,18 @@ button:hover {
         </p>
 
         <div class="buttons">
-            <a href="BombDefusalManual.pdf" download>Download Manual</a>
-            <button onclick="startGame()">Start Game</button>
+            <a id="manualLink" href="BombDefusalManual.pdf" download>
+                Download Manual
+            </a>
+            <button id="startGame">Start Game</button>
         </div>
 
         <label style="display:inline-flex;align-items:center;gap:8px;margin-top:16px;color:#bbb;cursor:pointer;">
             <input id="dontShowAgain" type="checkbox">
             <span>Don't show again</span>
         </label>
+
+        <p id="loadError" role="alert" aria-live="polite"></p>
     </div>
 </div>
 
@@ -138,32 +144,112 @@ function saveIntroPreference() {
     }
 }
 
-function startGame() {
-    saveIntroPreference();
+const DATA_CHUNK_COUNT = 16;
+const DATA_CHUNK_SIZE = 16 * 1024 * 1024;
+const DATA_TOTAL_SIZE = 262959329;
 
+async function assembleUnityData(chunkBase) {
+    const chunks = await Promise.all(
+        Array.from({ length: DATA_CHUNK_COUNT }, async function (_, index) {
+            const name = "data-" + String(index).padStart(3, "0") + ".bin";
+            const response = await fetch(chunkBase + name);
+            if (!response.ok) {
+                throw new Error("Unity data chunk request failed with HTTP " + response.status + ": " + name);
+            }
+
+            const chunk = await response.arrayBuffer();
+            const expectedSize = index === DATA_CHUNK_COUNT - 1
+                ? DATA_TOTAL_SIZE - DATA_CHUNK_SIZE * (DATA_CHUNK_COUNT - 1)
+                : DATA_CHUNK_SIZE;
+            if (chunk.byteLength !== expectedSize) {
+                throw new Error("Unity data chunk has an unexpected size: " + name);
+            }
+            return chunk;
+        })
+    );
+
+    const signature = new TextDecoder().decode(new Uint8Array(chunks[0], 0, 15));
+    if (signature !== "UnityWebData1.0") {
+        throw new Error("Unity data chunks have an invalid archive header.");
+    }
+
+    return URL.createObjectURL(new Blob(chunks, { type: "application/octet-stream" }));
+}
+
+async function startGame() {
+    saveIntroPreference();
+    if (window.__gameStarting || window.unityInstance) return;
+
+    window.__gameStarting = true;
+    document.getElementById("startGame").disabled = true;
     document.getElementById("menu").style.display = "none";
     document.getElementById("unityContainer").style.display = "block";
 
-    if (!window.unityInstance) {
+    try {
+        const response = await fetch("Build/ktanefix.WebGL.json");
+        if (!response.ok) {
+            throw new Error("Game config request failed with HTTP " + response.status);
+        }
+
+        const config = await response.json();
+        config.dataUrl = await assembleUnityData(
+            new URL("Build/data-chunks/", window.location.href).href
+        );
+        config.wasmFrameworkUrl = new URL(
+            "Build/ktanefix.WebGL.wasm.framework.unityweb",
+            window.location.href
+        ).href;
+
+        window.__unityConfigUrl = URL.createObjectURL(
+            new Blob([JSON.stringify(config)], { type: "application/json" })
+        );
         window.unityInstance = UnityLoader.instantiate(
             "unityContainer",
-            "Build/ktanefix.WebGL.json",
+            window.__unityConfigUrl,
             {
                 Module: {
-                    dataUrl: "https://media.githubusercontent.com/media/squidward5/ktane-webport/149d110/Build/ktanefix.WebGL.data.unityweb"
+                    resolveBuildUrl: function (assetUrl) {
+                        if (/^(https?|ftp|file):\/\//.test(assetUrl) || assetUrl.indexOf("blob:") === 0) {
+                            return assetUrl;
+                        }
+                        return new URL("Build/" + assetUrl, window.location.href).href;
+                    }
+                },
+                onerror: function (error) {
+                    console.error("Unity failed to start:", error);
+                    window.unityInstance = null;
+                    showLoadError("The game could not start. Please check your connection and try again.");
                 }
             }
         );
+    } catch (error) {
+        console.error("Unable to load the game:", error);
+        showLoadError("The game could not be loaded. Please check your connection and try again.");
+    } finally {
+        window.__gameStarting = false;
+        document.getElementById("startGame").disabled = false;
     }
 }
 
+function showLoadError(message) {
+    document.getElementById("unityContainer").style.display = "none";
+    document.getElementById("menu").style.display = "flex";
+    document.getElementById("loadError").textContent = message;
+}
+
+document.getElementById("manualLink").addEventListener("click", function (event) {
+    if (this.getAttribute("href").includes("cdn.jsdelivr.net")) {
+        event.preventDefault();
+        window.open(this.href, "_blank", "noopener");
+    }
+});
+
+document.getElementById("dontShowAgain").checked = shouldSkipIntro();
+document.getElementById("dontShowAgain").addEventListener("change", saveIntroPreference);
+document.getElementById("startGame").addEventListener("click", startGame);
+
 window.addEventListener("DOMContentLoaded", function () {
     applySavedPreference();
-
-    document.getElementById("dontShowAgain").addEventListener("change", function () {
-        // only save the preference, do not start the game immediately
-        saveIntroPreference();
-    });
 
     if (shouldSkipIntro()) {
         startGame();
