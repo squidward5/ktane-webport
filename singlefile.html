@@ -194,8 +194,7 @@
 
                 var config = await response.json();
                 config.dataUrl = await assembleUnityData();
-                // Unity resolves this filename under the page's regular Build/ folder.
-                config.wasmCodeUrl = "ktanefix.WebGL.wasm";
+                config.wasmCodeUrl = "https://squidward5.github.io/ktane-webport/Build/ktanefix.WebGL.wasm";
                 config.wasmFrameworkUrl = CDN_BASE + "/Build/ktanefix.WebGL.wasm.framework.unityweb";
 
                 window.__unityConfigUrl = URL.createObjectURL(
@@ -211,6 +210,12 @@
                                     return assetUrl;
                                 }
                                 return new URL("Build/" + assetUrl, window.location.href).href;
+                            },
+                            locateFile: function (fileName) {
+                                if (fileName === "build.wasm") {
+                                    return config.wasmCodeUrl;
+                                }
+                                return new URL("Build/" + fileName, window.location.href).href;
                             }
                         },
                         onerror: function (error) {
