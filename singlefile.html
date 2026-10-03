@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Keep Talking and Nobody Explodes</title>
-    <script src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@b44e8ede8f5228c290c2a136eba857700446fd36/Build/UnityLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@4e0dfa311e3a4eeb20043326e854c3aae06c4076/Build/UnityLoader.js"></script>
     <style>
         html,
         body {
@@ -91,7 +91,7 @@
             </p>
             <p id="loadError" role="alert" aria-live="polite"></p>
             <div class="buttons">
-                <a href="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@b44e8ede8f5228c290c2a136eba857700446fd36/BombDefusalManual.pdf" target="_blank" rel="noopener">Download Manual</a>
+                <a href="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@4e0dfa311e3a4eeb20043326e854c3aae06c4076/BombDefusalManual.pdf" target="_blank" rel="noopener">Download Manual</a>
                 <button type="button" id="startGame">Start Game</button>
             </div>
             <label style="display:inline-flex;align-items:center;gap:8px;margin-top:16px;color:#bbb;cursor:pointer;">
@@ -104,8 +104,8 @@
     <div id="unityContainer"></div>
 
     <script>
-        var CDN_BASE = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@b44e8ede8f5228c290c2a136eba857700446fd36";
-        var LFS_BASE = "https://media.githubusercontent.com/media/squidward5/ktane-webport/b44e8ede8f5228c290c2a136eba857700446fd36";
+        var CDN_BASE = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@4e0dfa311e3a4eeb20043326e854c3aae06c4076";
+        var LFS_BASE = "https://media.githubusercontent.com/media/squidward5/ktane-webport/4e0dfa311e3a4eeb20043326e854c3aae06c4076";
         var STORAGE_KEY = "ktaneIntroHidden";
 
         function shouldSkipIntro() {
@@ -127,30 +127,50 @@
             }
         }
 
-        function startGame() {
+        async function startGame() {
             saveIntroPreference();
             document.getElementById("menu").style.display = "none";
             document.getElementById("unityContainer").style.display = "block";
 
             if (!window.unityInstance) {
-                window.unityInstance = UnityLoader.instantiate(
-                    "unityContainer",
-                    CDN_BASE + "/Build/ktanefix.WebGL.json",
-                    {
-                        Module: {
-                            dataUrl: LFS_BASE + "/Build/ktanefix.WebGL.data.unityweb",
-                            wasmCodeUrl: CDN_BASE + "/Build/ktanefix.WebGL.wasm",
-                            wasmFrameworkUrl: CDN_BASE + "/Build/ktanefix.WebGL.wasm.framework.unityweb",
-                            locateFile: function (fileName) {
-                                if (fileName === "build.wasm") {
-                                    return CDN_BASE + "/Build/ktanefix.WebGL.wasm";
-                                }
-                                return CDN_BASE + "/Build/" + fileName;
+                try {
+                    var response = await fetch(CDN_BASE + "/Build/ktanefix.WebGL.json");
+                    if (!response.ok) {
+                        throw new Error("Game config request failed with HTTP " + response.status);
+                    }
+
+                    var config = await response.json();
+                    config.dataUrl = LFS_BASE + "/Build/ktanefix.WebGL.data.unityweb";
+                    // Unity prepends "Build/" here, so keep this relative to the page.
+                    config.wasmCodeUrl = "ktanefix.WebGL.wasm";
+                    config.wasmFrameworkUrl = CDN_BASE + "/Build/ktanefix.WebGL.wasm.framework.unityweb";
+
+                    window.__unityConfigUrl = URL.createObjectURL(
+                        new Blob([JSON.stringify(config)], { type: "application/json" })
+                    );
+                    window.unityInstance = UnityLoader.instantiate(
+                        "unityContainer",
+                        window.__unityConfigUrl,
+                        {
+                            onerror: function (error) {
+                                console.error("Unity failed to start:", error);
+                                showLoadError("The game could not start. Please check your connection and try again.");
                             }
                         }
-                    }
-                );
+                    );
+                } catch (error) {
+                    console.error("Unable to load the game configuration:", error);
+                    document.getElementById("unityContainer").style.display = "none";
+                    document.getElementById("menu").style.display = "flex";
+                    showLoadError("The game could not be loaded. Please check your connection and try again.");
+                }
             }
+        }
+
+        function showLoadError(message) {
+            document.getElementById("unityContainer").style.display = "none";
+            document.getElementById("menu").style.display = "flex";
+            document.getElementById("loadError").textContent = message;
         }
 
         document.getElementById("dontShowAgain").checked = shouldSkipIntro();
