@@ -142,7 +142,12 @@ function startGame() {
     if (!window.unityInstance) {
         window.unityInstance = UnityLoader.instantiate(
             "unityContainer",
-            "Build/ktanefix.WebGL.json"
+            "Build/ktanefix.WebGL.json",
+            {
+                Module: {
+                    dataUrl: "https://media.githubusercontent.com/media/squidward5/ktane-webport/149d110/Build/ktanefix.WebGL.data.unityweb"
+                }
+            }
         );
     }
 }
