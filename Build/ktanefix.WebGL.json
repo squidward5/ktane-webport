@@ -1,0 +1,16 @@
+{
+"companyName": "Steel Crate Games",
+"productName": "Keep Talking and Nobody Explodes",
+"productVersion": "1.9.31",
+"dataUrl": "ktanefix.WebGL.data.unityweb",
+"wasmCodeUrl": "ktanefix.WebGL.wasm",
+"wasmFrameworkUrl": "ktanefix.WebGL.wasm.framework.unityweb",
+"graphicsAPI": ["WebGL 2.0","WebGL 1.0"],
+"webglContextAttributes": {"preserveDrawingBuffer": false},
+"splashScreenStyle": "Dark",
+"backgroundColor": "#231F20",
+"cacheControl": {"default": "must-revalidate"},
+"developmentBuild": false,
+"multithreading": false,
+"unityVersion": "2019.4.41f1"
+}
