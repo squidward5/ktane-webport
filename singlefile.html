@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Keep Talking and Nobody Explodes</title>
+    <script src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@b44e8ede8f5228c290c2a136eba857700446fd36/Build/UnityLoader.js"></script>
+    <style>
+        html,
+        body {
+            box-sizing: border-box;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            border: none;
+            overflow: hidden;
+            background: #181818;
+            color: #eee;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        #menu {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .box {
+            width: 500px;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0 0 20px;
+            font-size: 34px;
+            font-weight: normal;
+        }
+
+        p {
+            color: #bbb;
+            line-height: 1.5;
+        }
+
+        #loadError {
+            color: #ff8080;
+        }
+
+        .buttons {
+            margin-top: 30px;
+        }
+
+        a,
+        button {
+            display: inline-block;
+            margin: 6px;
+            padding: 12px 22px;
+            border: 1px solid #555;
+            background: #2d2d2d;
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+            text-decoration: none;
+        }
+
+        a:hover,
+        button:hover {
+            background: #3b3b3b;
+        }
+
+        #unityContainer {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            border: none;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <div class="box">
+            <h1>Keep Talking and Nobody Explodes</h1>
+            <p>
+                Before playing, you will need the download manual for the game.
+                Download it below, then click "Start Game" to begin.
+            </p>
+            <p id="loadError" role="alert" aria-live="polite"></p>
+            <div class="buttons">
+                <a href="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@b44e8ede8f5228c290c2a136eba857700446fd36/BombDefusalManual.pdf" target="_blank" rel="noopener">Download Manual</a>
+                <button type="button" id="startGame">Start Game</button>
+            </div>
+            <label style="display:inline-flex;align-items:center;gap:8px;margin-top:16px;color:#bbb;cursor:pointer;">
+                <input id="dontShowAgain" type="checkbox">
+                <span>Don't show again</span>
+            </label>
+        </div>
+    </div>
+
+    <div id="unityContainer"></div>
+
+    <script>
+        var CDN_BASE = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@b44e8ede8f5228c290c2a136eba857700446fd36";
+        var LFS_BASE = "https://media.githubusercontent.com/media/squidward5/ktane-webport/b44e8ede8f5228c290c2a136eba857700446fd36";
+        var STORAGE_KEY = "ktaneIntroHidden";
+
+        function shouldSkipIntro() {
+            try {
+                return localStorage.getItem(STORAGE_KEY) === "true";
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function saveIntroPreference() {
+            try {
+                localStorage.setItem(
+                    STORAGE_KEY,
+                    document.getElementById("dontShowAgain").checked ? "true" : "false"
+                );
+            } catch (error) {
+                // Storage can be unavailable in private or restricted browsing modes.
+            }
+        }
+
+        function startGame() {
+            saveIntroPreference();
+            document.getElementById("menu").style.display = "none";
+            document.getElementById("unityContainer").style.display = "block";
+
+            if (!window.unityInstance) {
+                window.unityInstance = UnityLoader.instantiate(
+                    "unityContainer",
+                    CDN_BASE + "/Build/ktanefix.WebGL.json",
+                    {
+                        Module: {
+                            dataUrl: LFS_BASE + "/Build/ktanefix.WebGL.data.unityweb",
+                            wasmCodeUrl: CDN_BASE + "/Build/ktanefix.WebGL.wasm",
+                            wasmFrameworkUrl: CDN_BASE + "/Build/ktanefix.WebGL.wasm.framework.unityweb",
+                            locateFile: function (fileName) {
+                                if (fileName === "build.wasm") {
+                                    return CDN_BASE + "/Build/ktanefix.WebGL.wasm";
+                                }
+                                return CDN_BASE + "/Build/" + fileName;
+                            }
+                        }
+                    }
+                );
+            }
+        }
+
+        document.getElementById("dontShowAgain").checked = shouldSkipIntro();
+        document.getElementById("dontShowAgain").addEventListener("change", saveIntroPreference);
+        document.getElementById("startGame").addEventListener("click", startGame);
+
+        if (shouldSkipIntro()) {
+            startGame();
+        }
+    </script>
+</body>
+</html>
