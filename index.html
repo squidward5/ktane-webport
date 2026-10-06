@@ -194,7 +194,7 @@ async function startGame() {
 
         const config = await response.json();
         config.dataUrl = await assembleUnityData(
-            new URL("Build/data-chunks/", window.location.href).href
+            new URL("data/", window.location.href).href
         );
         config.wasmCodeUrl = new URL(
             "Build/ktanefix.WebGL.wasm",
