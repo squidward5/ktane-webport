@@ -112,7 +112,16 @@
 
     <script>
         var CDN_BASE = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@6e7ee2b2947d601c13571cffb70143174ac8cfd2";
-        var DATA_BASE = "https://squidward5.github.io/ktane-webport/data/";
+        var DATA_REPOSITORY_COMMITS = [
+            "27a630f4fe5ff581a79046f85f581ea0ca402801",
+            "fd8040f83f258dad788f4d0385895fa2bc0d857c",
+            "3a205a93347e044ad674a78e68f0a8b87aa835f3",
+            "01f763cbc732898f6c580941da00c2d08a3cbf21",
+            "d3d5c009aa13d9e1c997e3889b04740db29c7c0d",
+            "4cc8a99a4936cf3b496f787a0829ebfa7099c996",
+            "0f5718e281ccf3085676284d9595417a16688bf8",
+            "71a927206deb2211e28f93160deee9c59e96c553"
+        ];
         var STORAGE_KEY = "ktaneIntroHidden";
         var DATA_CHUNK_COUNT = 16;
         var DATA_CHUNK_SIZE = 16 * 1024 * 1024;
@@ -141,7 +150,11 @@
             var chunks = await Promise.all(
                 Array.from({ length: DATA_CHUNK_COUNT }, async function (_, index) {
                     var name = "data-" + String(index).padStart(3, "0") + ".bin";
-                    var response = await fetch(DATA_BASE + name);
+                    var repositoryNumber = Math.floor(index / 2) + 1;
+                    var repositoryCommit = DATA_REPOSITORY_COMMITS[repositoryNumber - 1];
+                    var chunkUrl = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport-data-" +
+                        repositoryNumber + "@" + repositoryCommit + "/" + name;
+                    var response = await fetch(chunkUrl);
                     if (!response.ok) {
                         throw new Error("Unity data chunk request failed with HTTP " + response.status + ": " + name);
                     }
