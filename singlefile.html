@@ -2,9 +2,23 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
+    <base href="./">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Keep Talking and Nobody Explodes</title>
-    <script src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport/Build/UnityLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@main/Build/UnityLoader.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+      }
+
+      #unityContainer {
+        width: 100%;
+        height: 100%;
+        border: none;
+        margin: 0;
+      }
+      
+    </style>
     <script>
       const DATA_CHUNK_COUNT = 16;
       const DATA_CHUNK_SIZE = 16 * 1024 * 1024;
@@ -41,7 +55,7 @@
       async function startUnity() {
         const status = document.getElementById("loadStatus");
         try {
-          const response = await fetch("Build/fixed build.json");
+          const response = await fetch("https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@main/Build/fixed build.json");
           if (!response.ok) {
             throw new Error("Game config request failed with HTTP " + response.status);
           }
@@ -49,8 +63,8 @@
           const config = await response.json();
           status.textContent = "Loading game data...";
           config.dataUrl = await assembleUnityData();
-          config.wasmCodeUrl = new URL("Build/fixed build.wasm", window.location.href).href;
-          config.wasmFrameworkUrl = new URL("Build/fixed build.wasm.framework.unityweb", window.location.href).href;
+          config.wasmCodeUrl = new URL("https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@main/Build/fixed build.wasm", window.location.href).href;
+          config.wasmFrameworkUrl = new URL("https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@main/Build/fixed build.wasm.framework.unityweb", window.location.href).href;
 
           const configUrl = URL.createObjectURL(
             new Blob([JSON.stringify(config)], { type: "application/json" })
@@ -89,7 +103,6 @@
     </script>
   </head>
   <body>
-    <div id="unityContainer" style="width: 960px; height: 600px; margin: auto"></div>
-    <p id="loadStatus" role="status" aria-live="polite">Preparing game...</p>
+    <div id="unityContainer"></div>
   </body>
 </html>
