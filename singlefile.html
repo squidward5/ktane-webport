@@ -590,10 +590,17 @@
             const logoHeight = videoLoaded
                 ? logoWidth / logoAspect
                 : (watermark.getBoundingClientRect().height || 94);
-            const totalHeight = logoHeight + gap + copyHeight;
+            // The video frame carries empty space under the logo; let the card rise
+            // into that space so the text sits just under the visible mark.
+            const contentBottomRatio = 0.759;
+            const overlap = videoLoaded
+                ? Math.max(0, Math.round(logoHeight * (1 - contentBottomRatio)) - 34)
+                : 0;
+            const spacing = videoLoaded ? -overlap : gap;
+            const totalHeight = logoHeight + copyHeight + spacing;
             const groupTop = Math.max(margin, (viewportHeight - totalHeight) / 2);
             const logoCenter = groupTop + logoHeight / 2;
-            const copyTop = Math.min(groupTop + logoHeight + gap, viewportHeight - copyHeight - margin);
+            const copyTop = Math.min(groupTop + logoHeight + spacing, viewportHeight - copyHeight - margin);
             document.body.style.setProperty("--intro-shift", (logoCenter - viewportHeight / 2) + "px");
             introCopy.style.top = copyTop + "px";
         }
