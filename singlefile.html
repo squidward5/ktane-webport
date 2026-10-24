@@ -572,11 +572,13 @@
         }
 
         function placeIntroCopy() {
-            const logoRect = watermark.getBoundingClientRect();
+            // The logo always settles in the exact center, so its final lower edge
+            // can be derived even while the move is still in flight.
+            const logoHeight = watermark.getBoundingClientRect().height || 100;
             const copyHeight = introCopy.offsetHeight || 280;
             const maxTop = window.innerHeight - copyHeight - 24;
-            const wantedTop = logoRect.bottom + 26;
-            const top = Math.max(72, Math.min(wantedTop, maxTop));
+            const logoBottom = window.innerHeight / 2 + logoHeight / 2;
+            const top = Math.max(72, Math.min(logoBottom + 26, maxTop));
             introCopy.style.top = top + "px";
         }
 
@@ -606,7 +608,7 @@
                     revealIntroCopy();
                 }
             });
-            window.setTimeout(revealIntroCopy, 3000);
+            window.setTimeout(revealIntroCopy, 700);
         }
 
         function removeLoadingScreen() {
