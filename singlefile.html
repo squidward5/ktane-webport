@@ -55,7 +55,7 @@
             position: fixed;
             left: 50%;
             top: 50%;
-            width: min(30vw, 800px);
+            width: min(780px, calc(100vw - 32px));
             transform: translate(-50%, -90%);
             mix-blend-mode: screen;
             z-index: 2;
@@ -94,6 +94,7 @@
 
         body.intro-active #watermark {
             top: 50%;
+            width: var(--intro-logo-width, min(780px, calc(100vw - 32px)));
             transform: translate(-50%, calc(-50% + var(--intro-shift, 0px)));
         }
 
@@ -573,14 +574,26 @@
 
         function placeIntroCopy() {
             // Center the whole composition: logo, gap and manual card together.
+            // The logo stays at full size and only gives up width when the window
+            // is genuinely too small to hold the composition.
+            const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
-            const logoHeight = watermark.getBoundingClientRect().height || 100;
             const copyHeight = introCopy.offsetHeight || 280;
-            const gap = 26;
+            const gap = 10;
+            const margin = 24;
+            const videoLoaded = watermarkVideo.videoWidth > 0 && watermarkVideo.videoHeight > 0;
+            const logoAspect = videoLoaded ? watermarkVideo.videoWidth / watermarkVideo.videoHeight : 1220 / 780;
+            const availableForLogo = Math.max(120, viewportHeight - copyHeight - gap - margin * 2);
+            const logoWidth = Math.max(160, Math.min(780, viewportWidth - 32, availableForLogo * logoAspect));
+            document.body.style.setProperty("--intro-logo-width", logoWidth + "px");
+
+            const logoHeight = videoLoaded
+                ? logoWidth / logoAspect
+                : (watermark.getBoundingClientRect().height || 94);
             const totalHeight = logoHeight + gap + copyHeight;
-            const groupTop = Math.max(24, (viewportHeight - totalHeight) / 2);
+            const groupTop = Math.max(margin, (viewportHeight - totalHeight) / 2);
             const logoCenter = groupTop + logoHeight / 2;
-            const copyTop = Math.min(groupTop + logoHeight + gap, viewportHeight - copyHeight - 24);
+            const copyTop = Math.min(groupTop + logoHeight + gap, viewportHeight - copyHeight - margin);
             document.body.style.setProperty("--intro-shift", (logoCenter - viewportHeight / 2) + "px");
             introCopy.style.top = copyTop + "px";
         }
