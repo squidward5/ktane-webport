@@ -273,8 +273,8 @@
             color: var(--muted);
             font-size: 0.7rem;
             font-weight: 500;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-transform: lowercase;
         }
 
         #intro-title {
@@ -449,7 +449,7 @@
             #loading-meta,
             #intro-copy > *,
             #loading-backdrop {
-                transition: opacity 0.2s ease;
+                transition: opacity 0.4s ease;
             }
         }
 
@@ -581,11 +581,14 @@
         }
 
         function revealIntroCopy() {
-            if (!introShown || loadingScreenRemoved || document.body.classList.contains("intro-copy-visible")) {
+            if (!introShown || loadingScreenRemoved) {
                 return;
             }
             // The logo must be settled before its lower edge can position the copy.
             placeIntroCopy();
+            if (document.body.classList.contains("intro-copy-visible")) {
+                return;
+            }
             document.body.classList.add("intro-copy-visible");
             introCopy.setAttribute("aria-hidden", "false");
             continueButton.focus({ preventScroll: true });
@@ -603,7 +606,7 @@
                     revealIntroCopy();
                 }
             });
-            window.setTimeout(revealIntroCopy, 1500);
+            window.setTimeout(revealIntroCopy, 3000);
         }
 
         function removeLoadingScreen() {
