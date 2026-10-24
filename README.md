@@ -4,7 +4,7 @@ my third web port. game was pretty easy to port since it was in unity mono lol
 
 # play here: https://squidward5.github.io/ktane-webport
 
-# update 1.0.2:
+# update 1.0.2 (latest):
 fixed minigames that didn't match up with the bomb defusal manual
 
 # update 1.0.1:
