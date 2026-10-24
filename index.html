@@ -1,126 +1,512 @@
 <!DOCTYPE html>
-<html lang="en-us">
-  <head>
+<html lang="en">
+
+<head>
     <meta charset="utf-8">
     <base href="./">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Keep Talking and Nobody Explodes</title>
     <style>
-      html,
-      body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        border: 0;
-        padding: 0;
-        overflow: hidden;
-        background: #231f20;
-      }
 
-      #unityContainer {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100vh;
-        margin: 0;
-        border: 0;
-        padding: 0;
-      }
-
-      #unityContainer canvas {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
-    <!-- Hosted alongside Build/ and data/, so every asset is resolved relative to this page.
-         Works at a domain root or under a GitHub Pages project path such as /ktane-webport/. -->
-    <script src="Build/UnityLoader.js"></script>
-    <script>
-      const BUILD_BASE = new URL("Build/", document.baseURI).href;
-      const DATA_BASE = new URL("data/", document.baseURI).href;
-      const DATA_CHUNK_COUNT = 16;
-      const DATA_CHUNK_SIZE = 16 * 1024 * 1024;
-
-      async function fetchDataChunk(index) {
-        const name = "data-" + String(index).padStart(3, "0") + ".bin";
-        const response = await fetch(DATA_BASE + name);
-        if (!response.ok) {
-          throw new Error("Unity data chunk request failed with HTTP " + response.status + ": " + name);
+        /* Bundled copy of the Clarity City variable face, so the page needs no CDN. */
+        @font-face {
+            font-family: "Clarity City";
+            font-style: normal;
+            font-weight: 100 900;
+            font-display: swap;
+            src: url("fonts/clarity-city-var.woff2") format("woff2");
         }
 
-        const chunk = await response.arrayBuffer();
-        const isLastChunk = index === DATA_CHUNK_COUNT - 1;
-        const sizeValid = isLastChunk
-          ? chunk.byteLength > 0 && chunk.byteLength <= DATA_CHUNK_SIZE
-          : chunk.byteLength === DATA_CHUNK_SIZE;
-        if (!sizeValid) {
-          throw new Error("Unity data chunk has an unexpected size: " + name + " (" + chunk.byteLength + " bytes)");
-        }
-        return chunk;
-      }
-
-      async function assembleUnityData() {
-        const chunks = await Promise.all(
-          Array.from({ length: DATA_CHUNK_COUNT }, function (_, index) {
-            return fetchDataChunk(index);
-          })
-        );
-
-        const signature = new TextDecoder().decode(new Uint8Array(chunks[0], 0, 15));
-        if (signature !== "UnityWebData1.0") {
-          throw new Error("Unity data chunks have an invalid archive header.");
+        :root {
+            --fg: #fff;
+            --muted: #a3a3a3;
+            --line: rgba(255, 255, 255, 0.18);
+            --bg: #000;
         }
 
-        return URL.createObjectURL(new Blob(chunks, { type: "application/octet-stream" }));
-      }
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: "Clarity City", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-      async function startUnity() {
-        try {
-          const response = await fetch(BUILD_BASE + "fixed%20build.json");
-          if (!response.ok) {
-            throw new Error("Game config request failed with HTTP " + response.status);
-          }
+        #unity-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: var(--bg);
+        }
 
-          const config = await response.json();
-          config.dataUrl = await assembleUnityData();
-          config.wasmCodeUrl = BUILD_BASE + "fixed%20build.wasm";
-          config.wasmFrameworkUrl = BUILD_BASE + "fixed%20build.wasm.framework.unityweb";
+        #unity-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
 
-          const configUrl = URL.createObjectURL(
-            new Blob([JSON.stringify(config)], { type: "application/json" })
-          );
-          UnityLoader.instantiate("unityContainer", configUrl, {
-            Module: {
-              resolveBuildUrl: function (assetUrl) {
-                if (/^(https?|blob):/i.test(assetUrl)) {
-                  return assetUrl;
-                }
-                if (/\.wasm(?:$|\?)/i.test(assetUrl)) {
-                  return config.wasmCodeUrl;
-                }
-                return BUILD_BASE + assetUrl;
-              },
-              locateFile: function (fileName) {
-                if (/\.wasm(?:$|\?)/i.test(fileName)) {
-                  return config.wasmCodeUrl;
-                }
-                return BUILD_BASE + fileName;
-              }
-            },
-            onerror: function (error) {
-              console.error("Unity failed to start:", error);
+        #loading-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            background: var(--bg);
+            transition: opacity 0.6s ease;
+        }
+
+        #watermark {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            width: min(780px, calc(100vw - 32px));
+            transform: translate(-50%, -90%);
+            mix-blend-mode: screen;
+            z-index: 2;
+            transition:
+                transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+                top 1s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.6s ease;
+            will-change: transform, top;
+        }
+
+        #watermark video {
+            display: block;
+            width: 100%;
+            height: auto;
+            pointer-events: none;
+        }
+
+        #watermark-fallback {
+            display: none;
+            font-size: clamp(3.5rem, 9vw, 7.5rem);
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            line-height: 1;
+            color: var(--fg);
+            text-align: center;
+            user-select: none;
+        }
+
+        body.video-missing #watermark video {
+            display: none;
+        }
+
+        body.video-missing #watermark-fallback {
+            display: block;
+        }
+
+        body.intro-active #watermark {
+            top: 50%;
+            width: var(--intro-logo-width, min(780px, calc(100vw - 32px)));
+            transform: translate(-50%, calc(-50% + var(--intro-shift, 0px)));
+        }
+
+        #loading-ui {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        #loading-text {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+            color: var(--fg);
+            font-size: clamp(1.5rem, 2vw, 2.25rem);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            user-select: none;
+            z-index: 2;
+        }
+
+        #loading-bar {
+            position: fixed;
+            left: 50%;
+            top: calc(50% + 34px);
+            width: min(220px, 60vw);
+            height: 4px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #333;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        #loading-progress {
+            display: block;
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--fg);
+            transition: width 0.25s ease;
+        }
+
+        #loading-meta {
+            position: fixed;
+            left: 50%;
+            top: calc(50% + 54px);
+            width: min(220px, 60vw);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        #loading-details {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            color: #ccc;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+            line-height: 1.2;
+        }
+
+        #loading-status {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #powered-by {
+            display: block;
+            margin-top: 2px;
+            color: #aaa;
+            font-size: 0.7rem;
+            letter-spacing: 0.04em;
+            line-height: 1.2;
+        }
+
+        #loading-text,
+        #loading-bar,
+        #loading-meta {
+            transition: opacity 0.45s ease;
+        }
+
+        body.intro-active #loading-text,
+        body.intro-active #loading-bar,
+        body.intro-active #loading-meta {
+            opacity: 0;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            color: var(--fg);
+            font-family: inherit;
+            font-size: inherit;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .loading-dots span {
+            display: inline-block;
+            margin-left: -0.12em;
+            font-size: 1.5em;
+            animation: dot-bounce 1.1s ease-in-out infinite;
+        }
+
+        .loading-dots span:first-child {
+            margin-left: 0;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 140ms;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 280ms;
+        }
+
+        @keyframes dot-bounce {
+            0%, 100% {
+                transform: translateY(0);
             }
-          });
-        } catch (error) {
-          console.error("Unable to load the game:", error);
+            50% {
+                transform: translateY(-0.1em);
+            }
         }
-      }
 
-      window.addEventListener("DOMContentLoaded", startUnity);
-    </script>
-  </head>
-  <body>
-    <div id="unityContainer"></div>
-  </body>
+        #intro-copy {
+            position: fixed;
+            left: 50%;
+            top: 58%;
+            width: min(440px, calc(100vw - 40px));
+            transform: translate(-50%, 0);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            text-align: center;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        body.intro-copy-visible #intro-copy {
+            pointer-events: auto;
+        }
+
+        #intro-copy > * {
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.55s ease, transform 0.55s ease;
+        }
+
+        body.intro-copy-visible #intro-copy > * {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        body.intro-copy-visible #intro-copy > *:nth-child(1) { transition-delay: 0ms; }
+        body.intro-copy-visible #intro-copy > *:nth-child(2) { transition-delay: 70ms; }
+        body.intro-copy-visible #intro-copy > *:nth-child(3) { transition-delay: 140ms; }
+        body.intro-copy-visible #intro-copy > *:nth-child(4) { transition-delay: 210ms; }
+        body.intro-copy-visible #intro-copy > *:nth-child(5) { transition-delay: 280ms; }
+        body.intro-copy-visible #intro-copy > *:nth-child(6) { transition-delay: 350ms; }
+
+        #intro-kicker {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: lowercase;
+        }
+
+        #intro-title {
+            margin: 0;
+            font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            line-height: 1.15;
+        }
+
+        #intro-text {
+            margin: 0;
+            max-width: 42ch;
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+
+        #intro-text strong {
+            color: var(--fg);
+            font-weight: 600;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            height: 46px;
+            padding: 0 26px;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:focus-visible {
+            outline: 2px solid var(--fg);
+            outline-offset: 3px;
+        }
+
+        #manual-link {
+            width: min(300px, 100%);
+            background: var(--fg);
+            color: #000;
+        }
+
+        #manual-link:hover {
+            background: #e6e6e6;
+        }
+
+        #continue-button {
+            width: min(300px, 100%);
+            background: transparent;
+            color: var(--fg);
+            border-color: var(--line);
+        }
+
+        #continue-button:hover {
+            border-color: var(--fg);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        #dont-show {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.75rem;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #dont-show input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            clip-path: inset(50%);
+            border: 0;
+        }
+
+        .checkbox-box {
+            position: relative;
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        #dont-show input:checked + .checkbox-box {
+            background: var(--fg);
+            border-color: var(--fg);
+        }
+
+        #dont-show input:checked + .checkbox-box::after {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 2px;
+            width: 4px;
+            height: 8px;
+            border: solid #000;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        #dont-show input:focus-visible + .checkbox-box {
+            outline: 2px solid var(--fg);
+            outline-offset: 2px;
+        }
+
+        #dont-show:hover {
+            color: var(--fg);
+        }
+
+        body.intro-closing #watermark,
+        body.intro-closing #intro-copy,
+        body.intro-closing #loading-backdrop {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        body.intro-closing #watermark {
+            transform: translate(-50%, calc(-50% + var(--intro-shift, 0px))) scale(1.04);
+        }
+
+        @media (max-height: 640px) {
+            #intro-copy {
+                gap: 9px;
+            }
+
+            #intro-text {
+                font-size: 0.8rem;
+                line-height: 1.45;
+            }
+
+            .button {
+                height: 40px;
+                font-size: 0.82rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .loading-dots span {
+                animation: none;
+            }
+
+            #watermark,
+            #loading-text,
+            #loading-bar,
+            #loading-meta,
+            #intro-copy > *,
+            #loading-backdrop {
+                transition: opacity 0.4s ease;
+            }
+        }
+
+        span {
+            text-transform: lowercase;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="unity-container"></div>
+    <div id="loading-backdrop"></div>
+    <div id="watermark">
+        <video id="watermark-video" src="watermark.mp4" autoplay muted loop playsinline preload="auto"></video>
+        <div id="watermark-fallback" aria-hidden="true">zay</div>
+    </div>
+    <div id="loading-ui">
+        <h1 id="loading-text">loading<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></h1>
+        <div id="loading-bar" role="progressbar" aria-label="Unity WebGL loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="loading-progress"></span></div>
+        <div id="loading-meta">
+            <div id="loading-details" aria-live="polite">
+                <span id="loading-status">preparing unity...</span>
+                <span id="loading-percent">0%</span>
+            </div>
+            <span id="powered-by">powered by wasm.rip</span>
+        </div>
+
+        <div id="intro-copy" aria-hidden="true">
+            <p id="intro-kicker">before you play</p>
+            <h2 id="intro-title">grab the bomb defusal manual</h2>
+            <p id="intro-text">You should download the <strong>Bomb Defusal Manual.pdf</strong> to understand the game. It explains every module, and you'll want it open while you defuse the bomb.</p>
+            <a id="manual-link" class="button" href="BombDefusalManual.pdf" download="Bomb Defusal Manual.pdf">
+                download manual
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </a>
+            <button id="continue-button" class="button" type="button">continue</button>
+            <label id="dont-show">
+                <input id="dont-show-input" type="checkbox">
+                <span class="checkbox-box" aria-hidden="true"></span>
+                <span>don't show again</span>
+            </label>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
 </html>

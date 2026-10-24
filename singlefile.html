@@ -465,7 +465,7 @@
     <div id="unity-container"></div>
     <div id="loading-backdrop"></div>
     <div id="watermark">
-        <video id="watermark-video" src="watermark.mp4" autoplay muted loop playsinline preload="auto"></video>
+        <video id="watermark-video" src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@e296ce01d2463592f3853b652bab4f4efc5b8495/watermark.mp4" autoplay muted loop playsinline preload="auto"></video>
         <div id="watermark-fallback" aria-hidden="true">zay</div>
     </div>
     <div id="loading-ui">
@@ -483,7 +483,7 @@
             <p id="intro-kicker">before you play</p>
             <h2 id="intro-title">grab the bomb defusal manual</h2>
             <p id="intro-text">You should download the <strong>Bomb Defusal Manual.pdf</strong> to understand the game. It explains every module, and you'll want it open while you defuse the bomb.</p>
-            <a id="manual-link" class="button" href="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@7802f66dbcbc8bf80a19583f56e6a33b984b7c6e/BombDefusalManual.pdf" target="_blank" rel="noopener">
+            <a id="manual-link" class="button" href="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@7802f66dbcbc8bf80a19583f56e6a33b984b7c6e/BombDefusalManual.pdf">
                 download manual
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
@@ -531,6 +531,7 @@
         const watermark = document.getElementById("watermark");
         const watermarkVideo = document.getElementById("watermark-video");
         const introCopy = document.getElementById("intro-copy");
+        const manualLink = document.getElementById("manual-link");
         const continueButton = document.getElementById("continue-button");
         const dontShowInput = document.getElementById("dont-show-input");
         const loadingBar = document.getElementById("loading-bar");
@@ -542,6 +543,7 @@
         let introShown = false;
         let loadingFinished = false;
         let loadingScreenRemoved = false;
+        let manualDownloadInProgress = false;
 
         function setStatus(text) {
             loadingStatus.textContent = text;
@@ -811,6 +813,43 @@
                 rememberSkipIntro();
             }
             closeLoadingScreen();
+        });
+
+        manualLink.addEventListener("click", async function (event) {
+            event.preventDefault();
+            if (manualDownloadInProgress) {
+                return;
+            }
+
+            manualDownloadInProgress = true;
+            manualLink.setAttribute("aria-disabled", "true");
+            try {
+                const response = await fetch(manualLink.href);
+                if (!response.ok) {
+                    throw new Error("Manual download failed with HTTP " + response.status);
+                }
+
+                const pdf = await response.blob();
+                if (pdf.size === 0 || (pdf.type && pdf.type !== "application/pdf")) {
+                    throw new Error("The CDN returned an invalid manual file.");
+                }
+
+                const downloadUrl = URL.createObjectURL(pdf);
+                const downloadLink = document.createElement("a");
+                downloadLink.href = downloadUrl;
+                downloadLink.download = "Bomb Defusal Manual.pdf";
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                downloadLink.remove();
+                window.setTimeout(function () {
+                    URL.revokeObjectURL(downloadUrl);
+                }, 60000);
+            } catch (error) {
+                console.error("Manual download failed:", error);
+            } finally {
+                manualDownloadInProgress = false;
+                manualLink.removeAttribute("aria-disabled");
+            }
         });
 
         window.addEventListener("resize", function () {
