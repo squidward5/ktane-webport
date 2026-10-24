@@ -94,7 +94,7 @@
 
         body.intro-active #watermark {
             top: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, calc(-50% + var(--intro-shift, 0px)));
         }
 
         #loading-ui {
@@ -419,7 +419,7 @@
         }
 
         body.intro-closing #watermark {
-            transform: translate(-50%, -50%) scale(1.04);
+            transform: translate(-50%, calc(-50% + var(--intro-shift, 0px))) scale(1.04);
         }
 
         @media (max-height: 640px) {
@@ -572,14 +572,17 @@
         }
 
         function placeIntroCopy() {
-            // The logo always settles in the exact center, so its final lower edge
-            // can be derived even while the move is still in flight.
+            // Center the whole composition: logo, gap and manual card together.
+            const viewportHeight = window.innerHeight;
             const logoHeight = watermark.getBoundingClientRect().height || 100;
             const copyHeight = introCopy.offsetHeight || 280;
-            const maxTop = window.innerHeight - copyHeight - 24;
-            const logoBottom = window.innerHeight / 2 + logoHeight / 2;
-            const top = Math.max(72, Math.min(logoBottom + 26, maxTop));
-            introCopy.style.top = top + "px";
+            const gap = 26;
+            const totalHeight = logoHeight + gap + copyHeight;
+            const groupTop = Math.max(24, (viewportHeight - totalHeight) / 2);
+            const logoCenter = groupTop + logoHeight / 2;
+            const copyTop = Math.min(groupTop + logoHeight + gap, viewportHeight - copyHeight - 24);
+            document.body.style.setProperty("--intro-shift", (logoCenter - viewportHeight / 2) + "px");
+            introCopy.style.top = copyTop + "px";
         }
 
         function revealIntroCopy() {
@@ -602,6 +605,7 @@
             }
             introShown = true;
             updateLoadingProgress(1);
+            placeIntroCopy();
             document.body.classList.add("intro-active");
             watermark.addEventListener("transitionend", function (event) {
                 if (event.propertyName === "top" || event.propertyName === "transform") {
