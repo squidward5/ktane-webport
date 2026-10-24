@@ -36,15 +36,28 @@
          jsDelivr does not serve GitHub files larger than 20 MB, so the 38 MB wasm
          is fetched from GitHub's raw host instead. The data chunks are split two
          per ktane-webport-data-N repository to stay under that same limit. -->
-    <script src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@main/Build/UnityLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@e0cbc87dd0b33daaf09264177e05513a523a8ce1/Build/UnityLoader.js"></script>
     <script>
-      // Pin this to a commit hash instead of main for a build that never changes.
-      const CDN_BASE = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@main";
+      // Everything is pinned to commit hashes so a launch serves exactly one build;
+      // jsDelivr@main can keep serving the previous revision after a push.
+      const MAIN_COMMIT = "e0cbc87dd0b33daaf09264177e05513a523a8ce1";
+      const CDN_BASE = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport@" + MAIN_COMMIT;
       const BUILD_BASE = CDN_BASE + "/Build/";
-      const WASM_URL = "https://raw.githubusercontent.com/squidward5/ktane-webport/main/Build/fixed%20build.wasm";
+      // jsDelivr will not serve the 38 MB wasm, so it comes from GitHub raw at the same commit.
+      const WASM_URL = "https://raw.githubusercontent.com/squidward5/ktane-webport/" + MAIN_COMMIT + "/Build/fixed%20build.wasm";
       // Two chunks per repository keeps every file under jsDelivr's 20 MB limit.
-      // Replace @main with a commit hash to pin a build and avoid branch caching.
+      // Each entry pins the commit of ktane-webport-data-1 through -8, in order.
       const DATA_REPOSITORY_BASE = "https://cdn.jsdelivr.net/gh/squidward5/ktane-webport-data-";
+      const DATA_REPOSITORY_REFS = [
+        "4e63cbde77b57d3b607509d5d832bb52221ed809",
+        "07b6bb2aec083ed83f2849210bb1f2c027851efe",
+        "095b2330a4662db1169dadcfbc7eb1d57764f5e9",
+        "48fdea59c7e0b7ff1cd0b201a597a389454425f1",
+        "0fd50c178516477333ff6733eb581026cb1938db",
+        "793a1543dcc0800425af52db27ce21e5bf7236da",
+        "3c259f6ff554a897a79fd2e916e517127bfff975",
+        "1150f4036140c50821e7457cd8b128528e0fd80b"
+      ];
       const DATA_CHUNKS_PER_REPOSITORY = 2;
       const DATA_CHUNK_COUNT = 16;
       const DATA_CHUNK_SIZE = 16 * 1024 * 1024;
@@ -52,7 +65,7 @@
       async function fetchDataChunk(index) {
         const name = "data-" + String(index).padStart(3, "0") + ".bin";
         const repositoryNumber = Math.floor(index / DATA_CHUNKS_PER_REPOSITORY) + 1;
-        const chunkUrl = DATA_REPOSITORY_BASE + repositoryNumber + "@main/" + name;
+        const chunkUrl = DATA_REPOSITORY_BASE + repositoryNumber + "@" + DATA_REPOSITORY_REFS[repositoryNumber - 1] + "/" + name;
         const response = await fetch(chunkUrl);
         if (!response.ok) {
           throw new Error("Unity data chunk request failed with HTTP " + response.status + ": " + name);
