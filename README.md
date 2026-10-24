@@ -1,6 +1,6 @@
 ﻿# ktane-webport
 
-my third web port. game was pretty easy to port since it was in unity mono lol
+my third web port. game was decompiled with assetripper premium and i manually fixed all known bugs during play-testing.
 
 # play here: https://squidward5.github.io/ktane-webport
 
